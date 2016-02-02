@@ -6,7 +6,20 @@ from os import path
 from urlparse import urlsplit
 
 import requests
-from gi.repository.GExiv2 import Metadata as exiv_file
+
+try:
+    from gi.repository.GExiv2 import Metadata as exiv_file
+except ImportError:
+    class exiv_file:
+        def __init__(self, filepath):
+            pass
+
+        def set_date_time(self, date):
+            pass
+
+        def save_file(self):
+            pass
+
 from tuenti import TuentiSocialMessenger
 
 logger = logging.getLogger()
