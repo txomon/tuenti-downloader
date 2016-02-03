@@ -4,6 +4,12 @@ Tuenti downloader
 This is a really easy to use tool, just python setup.py install it, be sure to
 have your user and password and execute it like `td user_email user_password`
 
+Support
+=======
+
+I have opened this chat room https://gitter.im/txomon/tuenti-downloader just
+in case you want to ask something, as I prefer that to being privately asked.
+
 TODO
 ====
 
