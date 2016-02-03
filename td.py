@@ -40,13 +40,15 @@ def really_retry():
         try:
             yield
             return
-        except Exception as e:
+        except StopIteration:
+            raise
+        except Exception:
             logger.exception("Failed but retrying for %d-th time", retries)
             sleep(retry_delays[retries])
             retries += 1
             if retries >= 10:
                 logger.error("Giving up!")
-                raise e
+                raise
 
 
 def get_user_album_photos(tsm, user=None):
