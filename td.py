@@ -2,7 +2,7 @@ import argparse
 import logging
 import shutil
 from datetime import datetime
-from os import path
+from os import path, makedirs
 from urlparse import urlsplit
 
 import requests
@@ -46,6 +46,8 @@ def gen_file_path(file_uri):
     _, _, uri_path, _, _ = urlsplit(file_uri)
     _, _, name = uri_path.rpartition('/')
     name = '%s.jpg' % name
+    if not path.exists('dl'):
+        makedirs('dl')
     file_path = path.join('dl', name)
     if path.exists(file_path):
         return None
@@ -82,9 +84,12 @@ class FileDownloader:
 
 
 def update_ts(file, timestamp):
-    ef = exiv_file(file)
-    ef.set_date_time(datetime.fromtimestamp(timestamp))
-    ef.save_file()
+    try:
+        ef = exiv_file(file)
+        ef.set_date_time(datetime.fromtimestamp(timestamp))
+        ef.save_file()
+    except Exception as e:
+        logger.exception('Something happened when writting time metadata in file %s', file);
 
 
 class IDCollector():
