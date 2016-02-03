@@ -11,7 +11,7 @@ try:
     import gi
     gi.require_version('GExiv2', '0.10')
     from gi.repository.GExiv2 import Metadata as exiv_file
-except ImportError:
+except:
     class exiv_file:
         def __init__(self, filepath):
             pass
