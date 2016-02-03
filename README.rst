@@ -4,6 +4,10 @@ Tuenti downloader
 This is a really easy to use tool, just python setup.py install it, be sure to
 have your user and password and execute it like `td user_email user_password`
 
+TODO
+====
+
+If you want to contribute, there are some ideas on the TODO file
 
 Disclaimer
 ==========
