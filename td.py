@@ -1,14 +1,17 @@
 import argparse
 import logging
 import shutil
+from contextlib import contextmanager
 from datetime import datetime
 from os import path, makedirs
+from time import sleep
 from urlparse import urlsplit
 
 import requests
 
 try:
     import gi
+
     gi.require_version('GExiv2', '0.10')
     from gi.repository.GExiv2 import Metadata as exiv_file
 except:
@@ -27,14 +30,33 @@ from tuenti import TuentiSocialMessenger
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
+retry_delays = [0, 2, 5, 10, 15, 15, 15, 15, 15, 30, 30]  # One more
+
+
+@contextmanager
+def really_retry():
+    retries = 0
+    while retries < 10:
+        try:
+            yield
+            return
+        except Exception as e:
+            logger.exception("Failed but retrying for %d-th time", retries)
+            sleep(retry_delays[retries])
+            retries += 1
+            if retries >= 10:
+                logger.error("Giving up!")
+                raise e
+
 
 def get_user_album_photos(tsm, user=None):
     page = 0
     while True:
-        if (user):
-            res = tsm.Profile_getAlbumPhotos({'page': page, 'pageSize': 1000, 'userId': user})
-        else:
-            res = tsm.Profile_getAlbumPhotos({'page': page, 'pageSize': 1000})
+        with really_retry():
+            if user:
+                res = tsm.Profile_getAlbumPhotos({'page': page, 'pageSize': 1000, 'userId': user})
+            else:
+                res = tsm.Profile_getAlbumPhotos({'page': page, 'pageSize': 1000})
         for item in res['items']:
             yield item
         if not res['hasMore']:
@@ -59,14 +81,15 @@ class FileDownloader:
         self.dl = requests.Session()
 
     def download_file(self, file_uri, file_path):
-        r = self.dl.get(file_uri, stream=True)
-        if r.status_code == 200:
-            with open(file_path, 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
-            return True
-        else:
-            return False
+        with really_retry():
+            r = self.dl.get(file_uri, stream=True)
+            if r.status_code == 200:
+                with open(file_path, 'wb') as f:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, f)
+                return True
+            else:
+                return False
 
     def save_photo(self, photo):
         file_uri = photo['photo']['fullUrl']
