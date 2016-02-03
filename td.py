@@ -8,6 +8,8 @@ from urlparse import urlsplit
 import requests
 
 try:
+    import gi
+    gi.require_version('GExiv2', '0.10')
     from gi.repository.GExiv2 import Metadata as exiv_file
 except ImportError:
     class exiv_file:
@@ -25,15 +27,8 @@ from tuenti import TuentiSocialMessenger
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
 
-args_eng = argparse.ArgumentParser(description='Tuenti image downloader', add_help=True)
-args_eng.add_argument('user', help='Tuenti login email')
-args_eng.add_argument('pwd', help='Tuenti password')
-args = args_eng.parse_args()
 
-tsm = TuentiSocialMessenger.from_credentials(args.user, args.pwd)
-
-
-def get_user_album_photos(user=None):
+def get_user_album_photos(tsm, user=None):
     page = 0
     while True:
         if (user):
@@ -71,29 +66,25 @@ class FileDownloader:
         else:
             return False
 
+    def save_photo(self, photo):
+        file_uri = photo['photo']['fullUrl']
+        file_path = gen_file_path(file_uri)
+        ts = long(photo['photo']['timestamp'])
+        if not file_path:
+            logger.debug('Skipping file %s', file_uri)
+            return
+        logger.debug('Downloading file %s', file_path)
+        if self.download_file(file_uri, file_path):
+            logger.debug('Done')
+            update_ts(file_path, ts)
+        else:
+            logger.debug('Failed')
+
 
 def update_ts(file, timestamp):
     ef = exiv_file(file)
     ef.set_date_time(datetime.fromtimestamp(timestamp))
     ef.save_file()
-
-
-file_downloader = FileDownloader()
-
-
-def save_photo(photo):
-    file_uri = photo['photo']['fullUrl']
-    file_path = gen_file_path(file_uri)
-    ts = long(photo['photo']['timestamp'])
-    if not file_path:
-        logger.debug('Skipping file %s', file_uri)
-        return
-    logger.debug('Downloading file %s', file_path)
-    if file_downloader.download_file(file_uri, file_path):
-        logger.debug('Done')
-        update_ts(file_path, ts)
-    else:
-        logger.debug('Failed')
 
 
 class IDCollector():
@@ -143,22 +134,33 @@ class IDCollector():
         logger.info('Users %d/%d', done_len, done_len + len(self.todo))
 
 
-collector = IDCollector()
-collector.add('')
+def main():
+    args_eng = argparse.ArgumentParser(description='Tuenti image downloader', add_help=True)
+    args_eng.add_argument('user', help='Tuenti login email')
+    args_eng.add_argument('pwd', help='Tuenti password')
+    args = args_eng.parse_args()
 
-total_count = 0
-saved_count = 0
-last_count_log = 0
+    tsm = TuentiSocialMessenger.from_credentials(args.user, args.pwd)
+    file_downloader = FileDownloader()
 
-for user_id in collector.iterate():
-    logger.debug("Inspecting user %s", user_id)
-    collector.gen_log_message()
-    for photo in get_user_album_photos(user_id):
-        total_count += 1
-        if collector.is_photo_collectable(photo):
-            collector.collect_ids(photo)
-            saved_count += 1
-        save_photo(photo)
-        if saved_count and not saved_count % 10 and last_count_log != saved_count:
-            last_count_log = saved_count
-            logger.info("Downloaded %d/%d photos", saved_count, total_count)
+    collector = IDCollector()
+    collector.add('')
+
+    total_count = 0
+    saved_count = 0
+
+    for user_id in collector.iterate():
+        logger.debug("Inspecting user %s", user_id)
+        collector.gen_log_message()
+        for photo in get_user_album_photos(tsm, user_id):
+            total_count += 1
+            if collector.is_photo_collectable(photo):
+                collector.collect_ids(photo)
+                saved_count += 1
+                file_downloader.save_photo(photo)
+            if saved_count and not total_count % 100:
+                logger.info("Downloaded %d/%d photos", saved_count, total_count)
+
+
+if __name__ == '__main__':
+    main()

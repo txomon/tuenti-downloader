@@ -1,1 +1,3 @@
 /dl/
+*.pyc
+*.egg-info/
