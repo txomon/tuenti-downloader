@@ -28,7 +28,8 @@ except:
 from tuenti import TuentiSocialMessenger
 
 logger = logging.getLogger()
-logging.basicConfig(level=logging.INFO)
+LOG_FORMAT= "%(levelname)s:%(name)s:%(asctime)s:%(message)s"
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 retry_delays = [0, 2, 5, 10, 15, 15, 15, 15, 15, 30, 30]  # One more
 
